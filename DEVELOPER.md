@@ -83,9 +83,28 @@ Gates don't apply to subagents (`PI_SUBAGENT_DEPTH` check).
 
 ## Embedded agents
 
-The three behavioral agents (`tdd.architect`, `tdd.red-writer`, `tdd.green-impl`) are embedded as string constants in `init.ts`. `/init` copies them to `.pi/agents/`.
+The three behavioral agents are embedded as string constants in `init.ts`. `/init` copies them to `.pi/agents/`.
 
-The `AGENT_RUNTIME` mapping in `config.ts` maps internal role names ("architect", "red-writer", "green-impl") to runtime agent names. Per-service overrides can be added via `agents` field in `tdd-services.json`.
+Each agent has full Pi subagent frontmatter:
+
+| Field | architect | red-writer | green-impl |
+|---|---|---|---|
+| `package` | tdd | tdd | tdd |
+| `model` | inherit | inherit | inherit |
+| `systemPromptMode` | replace | replace | replace |
+| `inheritProjectContext` | false | false | false |
+| `inheritSkills` | false | false | false |
+| `defaultContext` | fork | fresh | fork |
+| `permission` | bash read-only | bash test/lint/typecheck | bash test/lint/typecheck + install |
+
+Key design choices:
+- **architect**: reads only + write to `.tdd/`. Fork context for codebase access. Narrow bash (read-only).
+- **red-writer**: writes tests + stubs. Fresh context (no prior bias). Self-verification with concrete bash commands.
+- **green-impl**: minimum production code. Fork context. Full validation pipeline (tests + types + lint).
+
+All three have `memory` + `memory_search` for cross-session learning, plus structured REPORT and MEMORY sections.
+
+The `AGENT_RUNTIME` mapping in `config.ts` maps internal role names to runtime agent names. Per-service overrides via `agents` field in `tdd-services.json`.
 
 ## Widget refresh
 
