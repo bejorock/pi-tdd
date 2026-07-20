@@ -4,9 +4,9 @@ export const MAX_TDD_ITER = 100;
 
 /** Maps internal agent role names to Pi runtime agent names. Extend via tdd-services.json. */
 export const AGENT_RUNTIME: Record<string, string> = {
-	architect: "erica.architect",
-	"red-writer": "erica.red-writer",
-	"green-impl": "erica.green-impl",
+	architect: "tdd.architect",
+	"red-writer": "tdd.red-writer",
+	"green-impl": "tdd.green-impl",
 };
 
 /** Load service config from .pi/tdd-services.json or return empty. Generic — not hardcoded. */

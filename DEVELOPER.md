@@ -83,7 +83,7 @@ Gates don't apply to subagents (`PI_SUBAGENT_DEPTH` check).
 
 ## Embedded agents
 
-The three behavioral agents (`erica.architect`, `erica.red-writer`, `erica.green-impl`) are embedded as string constants in `init.ts`. `/init` copies them to `.pi/agents/`.
+The three behavioral agents (`tdd.architect`, `tdd.red-writer`, `tdd.green-impl`) are embedded as string constants in `init.ts`. `/init` copies them to `.pi/agents/`.
 
 The `AGENT_RUNTIME` mapping in `config.ts` maps internal role names ("architect", "red-writer", "green-impl") to runtime agent names. Per-service overrides can be added via `agents` field in `tdd-services.json`.
 

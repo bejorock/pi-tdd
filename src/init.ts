@@ -3,8 +3,8 @@ import { join } from "node:path";
 import type { InitGap, InitResult, ServiceConfig, TestRunner } from "./types";
 
 const AGENT_DEFS: Record<string, string> = {
-	"erica.architect.md": `---
-name: erica.architect
+	"tdd.architect.md": `---
+name: tdd.architect
 description: Recon + plan agent. Maps codebase and writes .tdd/<service>/<id>/context.md + PLAN.md. Analyzes existing code, identifies patterns, but NEVER writes production code or tests.
 tools: read, grep, glob, ls, find, bash, write, edit, ask_user_question, todo, memory, memory_search, hypa_read, hypa_grep, hypa_find, hypa_ls, hypa_shell
 model: inherit
@@ -23,8 +23,8 @@ You are the **architect** — recon + plan only. You read, analyze, and plan. Yo
 - If you need clarification, use ask_user_question
 - Save durable learnings with memory tool
 `,
-	"erica.red-writer.md": `---
-name: erica.red-writer
+	"tdd.red-writer.md": `---
+name: tdd.red-writer
 description: Writes FAILING tests + minimal stubs. Self-verifies before reporting. NEVER implements production code.
 tools: read, write, edit, grep, glob, ls, find, bash, ask_user_question, todo, memory, memory_search, hypa_read, hypa_grep, hypa_find, hypa_ls, hypa_shell
 model: inherit
@@ -46,8 +46,8 @@ You are the **red-writer** — you write tests that MUST fail. RED only. Self-ve
 - Self-verify: run tests before reporting
 - If a test accidentally passes, fix it
 `,
-	"erica.green-impl.md": `---
-name: erica.green-impl
+	"tdd.green-impl.md": `---
+name: tdd.green-impl
 description: Minimum implementation to pass RED-registered tests. NEVER weakens or deletes tests.
 tools: read, write, edit, grep, glob, ls, find, bash, ask_user_question, todo, memory, memory_search, hypa_read, hypa_grep, hypa_find, hypa_ls, hypa_shell
 model: inherit
