@@ -25,7 +25,7 @@ export function registerTddStart(pi: any): void {
 			const wt = repoRoot();
 			const config = loadServiceConfig(wt);
 			const cfg = config[service];
-			if (!cfg) throw new Error(`Unknown service '${service}'. Known: ${Object.keys(config).join(", ")}. Run /tdd:init or add it to .pi/tdd-services.json.`);
+			if (!cfg) throw new Error(`Unknown service '${service}'. Known: ${Object.keys(config).join(", ")}. Run /init or add it to .pi/tdd-services.json.`);
 
 			// Check for locked cycle
 			const pointer = readPointer(wt);

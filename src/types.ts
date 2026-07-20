@@ -38,14 +38,14 @@ export interface TestResult {
 	summary: string;
 }
 
-/** Gap found during /tdd:init analysis */
+/** Gap found during /init analysis */
 export interface InitGap {
 	service: string;
 	severity: "error" | "warn";
 	message: string;
 }
 
-/** Result of /tdd:init */
+/** Result of /init */
 export interface InitResult {
 	services: Record<string, ServiceConfig>;
 	gaps: InitGap[];

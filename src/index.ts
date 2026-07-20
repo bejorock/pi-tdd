@@ -23,8 +23,8 @@ export default function (pi: any): void {
 	registerTddStatus(pi);
 	registerTddDone(pi);
 
-	// ---- Command: /tdd:init ----
-	pi.registerCommand("tdd:init", {
+	// ---- Command: /init ----
+	pi.registerCommand("init", {
 		description: "Analyze project and scaffold TDD config + agents. Reports gaps.",
 		handler: async (_args: any, ctx: any) => {
 			const root = repoRoot();

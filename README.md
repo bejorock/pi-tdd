@@ -34,7 +34,7 @@ In TDD mode, the system prompt is augmented with flow instructions, gate rules, 
 
 ```bash
 # 1. Scaffold the project
-/tdd:init
+/init
 
 # 2. Enter TDD mode
 /tdd
@@ -65,7 +65,7 @@ tdd_done    →  ✅ done          (lock released)
 
 | Name | Type | What |
 |---|---|---|
-| `/tdd:init` | Command | Analyze project, scaffold config + agents, report gaps |
+| `/init` | Command | Analyze project, scaffold config + agents, report gaps |
 | `/build` | Command | Switch to build mode (all tools enabled) |
 | `/plan` | Command | Switch to plan mode (write tools blocked) |
 | `/tdd` | Command | Switch to TDD mode (guided flow, code writes blocked) |
@@ -79,7 +79,7 @@ tdd_done    →  ✅ done          (lock released)
 
 ## Configuration
 
-After running `/tdd:init`, edit `.pi/tdd-services.json`:
+After running `/init`, edit `.pi/tdd-services.json`:
 
 ```json
 {

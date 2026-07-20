@@ -8,7 +8,7 @@ pi-tdd/src/
 ├── gates.ts              # Mode system (build/plan/tdd), tool blocking, system prompt injection
 ├── config.ts             # Service config loader, AGENT_RUNTIME mapping, MAX_TDD_ITER
 ├── state.ts              # Cycle state machine: pointer + flow + cycle helpers
-├── init.ts               # /tdd:init — project analysis, scaffolding, gap detection
+├── init.ts               # /init — project analysis, scaffolding, gap detection
 ├── widget.ts             # Live mode-aware widget (build/plan/tdd)
 ├── test-runner.ts        # Test exec + parsers (pytest/vitest/jest) + compileChangedPython
 ├── subagent.ts           # Unified subagentCall() with runtime name mapping + reads
@@ -83,7 +83,7 @@ Gates don't apply to subagents (`PI_SUBAGENT_DEPTH` check).
 
 ## Embedded agents
 
-The three behavioral agents (`erica.architect`, `erica.red-writer`, `erica.green-impl`) are embedded as string constants in `init.ts`. `/tdd:init` copies them to `.pi/agents/`.
+The three behavioral agents (`erica.architect`, `erica.red-writer`, `erica.green-impl`) are embedded as string constants in `init.ts`. `/init` copies them to `.pi/agents/`.
 
 The `AGENT_RUNTIME` mapping in `config.ts` maps internal role names ("architect", "red-writer", "green-impl") to runtime agent names. Per-service overrides can be added via `agents` field in `tdd-services.json`.
 
