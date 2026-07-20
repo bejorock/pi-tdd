@@ -2,31 +2,32 @@ import { Type } from "typebox";
 import { readFlow, readPointer } from "../state";
 import { repoRoot } from "../utils";
 
-const PHASE_ICONS: Record<string, string> = {
-	architect: "📐", "red-writer": "🔴", red_verify: "🔴✅",
-	"green-impl": "🟢", green_verify: "🟢✅", reviewer: "👀", done: "✅",
-};
-
 export function registerTddStatus(pi: any): void {
 	pi.registerTool({
 		name: "tdd_status",
 		label: "TDD Status",
-		description: "Show current TDD cycle status.",
+		description: "Show current TDD cycle status: active cycle ID, service, phase, lock state, and artifact paths.",
+		promptSnippet: "Show the current TDD cycle status",
+		promptGuidelines: ["Use to check which cycle is active and what phase it's in."],
 		parameters: Type.Object({}),
 		async execute() {
 			const wt = repoRoot();
-			const ptr = readPointer(wt);
-			if (!ptr) return { content: [{ type: "text", text: "No active TDD cycle. Call tdd_start() to begin." }] };
-			const flow = readFlow(wt, ptr.activeService, ptr.activeCycleId);
-			if (!flow) return { content: [{ type: "text", text: `Pointer exists but flow not found: ${ptr.activeService}/${ptr.activeCycleId}` }] };
-			const icon = PHASE_ICONS[flow.step] ?? "⏳";
+			const pointer = readPointer(wt);
+			if (!pointer) return { content: [{ type: "text", text: "No active TDD cycle. Call tdd_start() to begin." }] };
+			const flow = readFlow(wt, pointer.activeService, pointer.activeCycleId);
+			if (!flow) return { content: [{ type: "text", text: `Pointer exists but flow not found for ${pointer.activeService}/${pointer.activeCycleId}.` }] };
 			return { content: [{ type: "text", text: [
-				`🧪 TDD Cycle: ${flow.service}/${flow.cycleId}`,
-				`Phase: ${icon} ${flow.step}`,
-				`Feature: ${flow.feature}`,
-				`Locked: ${flow.locked}`,
-				flow.testPaths ? `Tests: ${flow.testPaths.join(", ")}` : null,
-			].filter(Boolean).join("\n") }] };
+				`## TDD Cycle Status`, ``,
+				`| Field | Value |`, `|---|---|`,
+				`| Service | \`${flow.service}\` |`,
+				`| Cycle ID | \`${flow.cycleId}\` |`,
+				`| Feature | ${flow.feature} |`,
+				`| Phase | ${flow.step} |`,
+				`| Locked | ${flow.locked ? "🔒 yes" : "🔓 no"} |`,
+				`| Plan | ${flow.planPath} |`,
+				`| Test paths | ${flow.testPaths.length > 0 ? flow.testPaths.join(", ") : "(none yet)"} |`,
+				`| Started | ${flow.startedAt} |`,
+			].join("\n") }] };
 		},
 	});
 }

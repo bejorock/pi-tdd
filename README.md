@@ -12,15 +12,23 @@ Enforces strict RED→GREEN discipline by splitting TDD into **three behavioral 
 | 🔴 **red-writer** | Writes failing tests + stubs | Implements production code |
 | 🟢 **green-impl** | Minimum code to pass | Touches or weakens tests |
 
-Each TDD cycle is isolated with a unique ID and a lock that prevents concurrent cycles.
-
 ## Installation
 
 ```bash
 pi install git:github.com/bejorock/pi-tdd
 ```
 
-> Requires Pi coding agent with [subagent support](https://github.com/earendil-works/pi-coding-agent).
+## Modes
+
+The extension adds three modes with tool blocking:
+
+| Command | Mode | Effect |
+|---|---|---|
+| `/build` | Build | All tools enabled (default) |
+| `/plan` | Plan | `write`/`edit` blocked — read-only planning |
+| `/tdd` | TDD | Code writes blocked, `.tdd/` workspace allowed, bash redirects blocked |
+
+In TDD mode, the system prompt is augmented with flow instructions, gate rules, and mode restrictions.
 
 ## Quick start
 
@@ -28,10 +36,13 @@ pi install git:github.com/bejorock/pi-tdd
 # 1. Scaffold the project
 /tdd:init
 
-# 2. Start a cycle
+# 2. Enter TDD mode
+/tdd
+
+# 3. Start a cycle
 tdd_start({ service: "api", feature: "user auth" })
 
-# 3. Follow the flow
+# 4. Follow the flow
 tdd_next()            # next phase instructions
 tdd_red({...})        # verify tests FAIL
 tdd_green({...})      # verify tests PASS
@@ -45,7 +56,7 @@ tdd_start   →  📐 architect     (recon + plan)
 tdd_next    →  🔴 red-writer    (failing tests + stubs)
 tdd_red     →  🔴✅ red_verify  (gate: tests MUST fail)
                 🟢 green-impl   (minimum implementation)
-tdd_green   →  🟢✅ green_verify(gate: tests MUST pass)
+tdd_green   →  🟢✅ green_verify(gate: tests MUST pass + compile)
                 👀 reviewer     (code review)
 tdd_done    →  ✅ done          (lock released)
 ```
@@ -55,16 +66,20 @@ tdd_done    →  ✅ done          (lock released)
 | Name | Type | What |
 |---|---|---|
 | `/tdd:init` | Command | Analyze project, scaffold config + agents, report gaps |
+| `/build` | Command | Switch to build mode (all tools enabled) |
+| `/plan` | Command | Switch to plan mode (write tools blocked) |
+| `/tdd` | Command | Switch to TDD mode (guided flow, code writes blocked) |
+| `/mode` | Command | Show current mode |
 | `tdd_start` | Tool | Start a new locked TDD cycle |
-| `tdd_next` | Tool | Get the next phase's subagent call |
-| `tdd_red` | Tool | RED gate — run tests, verify they FAIL, write manifest |
-| `tdd_green` | Tool | GREEN gate — run tests, verify they PASS (max 100 retries) |
-| `tdd_status` | Tool | Show active cycle details |
-| `tdd_done` | Tool | Release cycle lock, mark complete or abandoned |
+| `tdd_next` | Tool | Get the next phase's subagent call (auto-detects from artifacts) |
+| `tdd_red` | Tool | RED gate — verify tests FAIL (rejects passing + collection errors) |
+| `tdd_green` | Tool | GREEN gate — verify tests PASS, compile changed Python, max 100 retries |
+| `tdd_status` | Tool | Show active cycle details (markdown table) |
+| `tdd_done` | Tool | Release cycle lock |
 
 ## Configuration
 
-After running `/tdd:init`, edit `.pi/tdd-services.json` for full control:
+After running `/tdd:init`, edit `.pi/tdd-services.json`:
 
 ```json
 {
@@ -84,6 +99,11 @@ After running `/tdd:init`, edit `.pi/tdd-services.json` for full control:
 | `runner` | `pytest`, `vitest`, or `jest` |
 | `cmdTemplate` | `{paths}` is replaced with space-joined test file paths |
 
+## Gating
+
+- **`tdd_red`** — runs tests, verifies FAIL (rejects already-passing, collection errors). Writes `.tdd/<service>/<id>/red.json` as authority.
+- **`tdd_green`** — runs EXACT registered tests, verifies PASS. Validates testPaths match red manifest. Compiles changed `.py` files (pytest only). Tracks `lastGreen` in manifest.
+
 ## Requirements
 
 - **Pi coding agent** with subagent support
@@ -99,7 +119,7 @@ When a TDD cycle is active, a live status widget appears below the editor:
 📐 architect · user auth
 ```
 
-🔒 locked / 🔓 completed. Refreshes instantly on state changes.
+Build/plan modes show simple green/blue status bars.
 
 ## License
 

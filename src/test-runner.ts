@@ -1,67 +1,76 @@
 import { execSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { ServiceConfig } from "./types";
-
-export interface TestResult {
-	ran: boolean;
-	passed: number;
-	failed: number;
-	summary: string;
-}
+import type { ServiceConfig, TestResult } from "./types";
 
 export function runServiceTests(
 	cfg: ServiceConfig,
 	testPaths: string[],
 	wt: string,
-): { result: TestResult; stdout: string } {
+): { result: TestResult; stdout: string; exitCode: number } {
 	const cwd = join(wt, cfg.dir);
-	const cmd = cfg.cmd(testPaths);
+	if (!existsSync(cwd)) throw new Error(`Service dir not found: ${cwd}`);
+
+	const relPaths = testPaths.map((p) => {
+		const prefix = cfg.dir + "/";
+		return p.startsWith(prefix) ? p.slice(prefix.length) : p;
+	});
+
+	const isPython = cfg.runner === "pytest";
+	const env = isPython ? { ...process.env, PYTHONPATH: cwd } : { ...process.env };
+
 	let stdout = "";
+	let stderr = "";
+	let exitCode = 0;
 	try {
-		stdout = execSync(cmd, { cwd, stdio: ["ignore", "pipe", "pipe"], timeout: 120_000 }).toString();
+		stdout = execSync(cfg.cmd(relPaths), { cwd, stdio: ["ignore", "pipe", "pipe"], timeout: 180_000, env }).toString();
 	} catch (e: any) {
-		stdout = (e.stdout?.toString() ?? "") + (e.stderr?.toString() ?? "");
+		stdout = e.stdout?.toString() ?? "";
+		stderr = e.stderr?.toString() ?? "";
+		exitCode = e.status ?? 1;
 	}
-	const result = parseResult(cfg.runner, stdout);
-	return { result, stdout };
+
+	const combined = stdout + (stderr ? "\n" + stderr : "");
+	const result = cfg.runner === "vitest" ? parseVitest(stdout) : cfg.runner === "jest" ? parseJest(combined) : parsePytest(combined);
+	return { result, stdout: combined, exitCode };
 }
 
-function parseResult(runner: string, stdout: string): TestResult {
-	switch (runner) {
-		case "pytest":
-			return parsePytest(stdout);
-		case "vitest":
-			return parseVitest(stdout);
-		case "jest":
-			return parseJest(stdout);
-		default:
-			return { ran: false, passed: 0, failed: 0, summary: `Unknown runner: ${runner}` };
-	}
+function parsePytest(stdout: string): TestResult {
+	const failedMatch = /(\d+)\s+failed/i.exec(stdout);
+	const passedMatch = /(\d+)\s+passed/i.exec(stdout);
+	const failed = failedMatch ? Number(failedMatch[1]) : 0;
+	const passed = passedMatch ? Number(passedMatch[1]) : 0;
+	const noTests = /no tests ran/i.test(stdout);
+	const collectError = /(?:errors?\b|cannot collect|collection error)/i.test(stdout) && failed === 0 && passed === 0;
+	const summaryLine = stdout.split("\n").find((l) => /=/.test(l) && /(passed|failed|error)/i.test(l))?.trim() ?? "";
+	return { failed, passed, ran: failed + passed > 0 && !noTests, collectError, summary: summaryLine };
 }
 
-function parsePytest(out: string): TestResult {
-	const passed = (out.match(/(\d+) passed/g) ?? []).map(s => parseInt(s)).reduce((a, b) => a + b, 0);
-	const failed = (out.match(/(\d+) failed/g) ?? []).map(s => parseInt(s)).reduce((a, b) => a + b, 0);
-	const errors = (out.match(/(\d+) error[s]?/g) ?? []).map(s => parseInt(s)).reduce((a, b) => a + b, 0);
-	const ran = passed + failed + errors > 0;
-	return { ran, passed, failed: failed + errors, summary: `${passed} passed, ${failed} failed, ${errors} errors` };
-}
-
-function parseVitest(out: string): TestResult {
-	try {
-		const json = JSON.parse(out);
-		const passed = json.numPassedTests ?? 0;
-		const failed = json.numFailedTests ?? 0;
-		return { ran: passed + failed > 0, passed, failed, summary: `${passed} passed, ${failed} failed` };
-	} catch {
-		const m = out.match(/Tests\s+(\d+)\s+failed\s+\|\s+(\d+)\s+passed/);
-		if (m) {
-			const failed = parseInt(m[1]);
-			const passed = parseInt(m[2]);
-			return { ran: true, passed, failed, summary: `${passed} passed, ${failed} failed` };
-		}
-		return { ran: false, passed: 0, failed: 0, summary: "Could not parse vitest output" };
+function parseVitest(stdout: string): TestResult {
+	const start = stdout.indexOf("{");
+	const end = stdout.lastIndexOf("}");
+	let numTotal = 0;
+	let numPassed = 0;
+	let numFailed = 0;
+	if (start !== -1 && end > start) {
+		try {
+			const j = JSON.parse(stdout.slice(start, end + 1)) as {
+				numTotalTests?: number;
+				numPassedTests?: number;
+				numFailedTests?: number;
+			};
+			numTotal = j.numTotalTests ?? 0;
+			numPassed = j.numPassedTests ?? 0;
+			numFailed = j.numFailedTests ?? 0;
+		} catch { /* malformed JSON */ }
 	}
+	return {
+		failed: numFailed,
+		passed: numPassed,
+		ran: numTotal > 0,
+		collectError: false,
+		summary: `Tests: ${numPassed} passed, ${numFailed} failed, ${numTotal} total`,
+	};
 }
 
 function parseJest(out: string): TestResult {
@@ -70,13 +79,33 @@ function parseJest(out: string): TestResult {
 		if (m) {
 			const failed = parseInt(m[1]);
 			const passed = parseInt(m[2]);
-			return { ran: true, passed, failed, summary: `${passed} passed, ${failed} failed` };
+			return { ran: true, passed, failed, collectError: false, summary: `${passed} passed, ${failed} failed` };
 		}
 	} catch {}
-	return { ran: false, passed: 0, failed: 0, summary: "Could not parse jest output" };
+	return { ran: false, passed: 0, failed: 0, collectError: false, summary: "Could not parse jest output" };
 }
 
-export function tailOutput(stdout: string, lines = 60): string {
-	const all = stdout.split("\n");
-	return all.slice(-lines).join("\n");
+export function tailOutput(stdout: string, n = 30): string {
+	return stdout.split("\n").filter((l) => l.trim().length > 0).slice(-n).join("\n");
+}
+
+export function compileChangedPython(serviceDir: string, wt: string): { ok: boolean; errors: string; compiled: number } {
+	let changed = "";
+	try {
+		changed = execSync(`git diff --name-only HEAD -- "${serviceDir}"`, { cwd: wt, stdio: ["ignore", "pipe", "pipe"] }).toString();
+	} catch { /* no tracked changes */ }
+	try {
+		changed += "\n" + execSync(`git ls-files --others --exclude-standard -- "${serviceDir}"`, { cwd: wt, stdio: ["ignore", "pipe", "pipe"] }).toString();
+	} catch { /* no untracked files */ }
+
+	const pyFiles = changed.split("\n").map((s) => s.trim()).filter((p) => p && p.endsWith(".py"));
+	if (pyFiles.length === 0) return { ok: true, errors: "", compiled: 0 };
+
+	const abs = pyFiles.map((p) => join(wt, p));
+	try {
+		execSync(`python -m py_compile ${abs.map((a) => `"${a}"`).join(" ")}`, { cwd: wt, stdio: ["ignore", "pipe", "pipe"], timeout: 60_000 });
+		return { ok: true, errors: "", compiled: abs.length };
+	} catch (e: any) {
+		return { ok: false, errors: (e.stderr?.toString() ?? "") + (e.stdout?.toString() ?? ""), compiled: abs.length };
+	}
 }

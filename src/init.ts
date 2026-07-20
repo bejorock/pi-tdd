@@ -101,6 +101,7 @@ export function runInit(projectRoot: string): InitResult {
 		gaps.push({ service: "*", severity: "warn", message: "No service directories found (apps/, packages/, services/, libs/). Create one to use TDD." });
 	}
 
+	const cmdTemplates: Record<string, string> = {};
 	for (const svcDir of discovered) {
 		const name = svcDir.split("/").pop()!;
 		const runner = detectTestFramework(join(projectRoot, svcDir));
@@ -115,6 +116,7 @@ export function runInit(projectRoot: string): InitResult {
 		const skill = guessSkill(name);
 
 		services[name] = { dir: svcDir, skill, runner, cmd: (p) => cmdTemplate.replace(/\{paths\}/g, p.join(" ")) };
+		cmdTemplates[name] = cmdTemplate;
 
 		// Check for skill existence
 		const skillPath = join(projectRoot, ".pi", "skills", skill, "SKILL.md");
@@ -144,7 +146,7 @@ export function runInit(projectRoot: string): InitResult {
 	const configWritten = !existsSync(configPath) || Object.keys(services).length > 0;
 	if (Object.keys(services).length > 0) {
 		const json = Object.fromEntries(
-			Object.entries(services).map(([k, v]) => [k, { dir: v.dir, skill: v.skill, runner: v.runner, cmdTemplate: buildCmdTemplate(v.runner, "") }]),
+			Object.entries(services).map(([k, v]) => [k, { dir: v.dir, skill: v.skill, runner: v.runner, cmdTemplate: cmdTemplates[k] ?? buildCmdTemplate(v.runner, "") }]),
 		);
 		writeFileSync(configPath, JSON.stringify(json, null, 2));
 	}

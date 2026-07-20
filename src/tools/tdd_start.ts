@@ -1,55 +1,75 @@
 import { Type } from "typebox";
-import { loadServiceConfig, MAX_TDD_ITER } from "../config";
+import { loadServiceConfig } from "../config";
 import type { TddFlow } from "../types";
 import { cycleId, cyclePlanPath, readFlow, readPointer, writeFlow, writePointer } from "../state";
-import { architectCall } from "../subagent";
-import { refreshWidget } from "../widget";
+import { subagentCall } from "../subagent";
 import { repoRoot } from "../utils";
+import { refreshWidget } from "../widget";
 
 export function registerTddStart(pi: any): void {
 	pi.registerTool({
 		name: "tdd_start",
-		label: "TDD Start",
-		description: "Start a new TDD cycle. Creates a locked cycle, writes pointer, returns architect subagent call.",
-		promptSnippet: "Start a TDD flow for a service and feature",
+		label: "TDD Start (initialize flow)",
+		description: "Initialize TDD flow for a service. Creates .tdd/flow.json with state machine. Returns step 1 instructions (architect agent call).",
+		promptSnippet: "Start TDD flow for a service and feature",
+		promptGuidelines: [
+			"Call tdd_start({ service, feature }) ONCE per feature.",
+			"Then follow the returned instructions to call the architect agent.",
+		],
 		parameters: Type.Object({
 			service: Type.String({ description: "Service slug from tdd-services.json." }),
-			feature: Type.String({ description: "Feature description." }),
+			feature: Type.String({ description: "Feature description (e.g. 'user auth')." }),
 		}),
 		async execute(_toolCallId: string, params: any) {
 			const { service, feature } = params as { service: string; feature: string };
 			const wt = repoRoot();
 			const config = loadServiceConfig(wt);
 			const cfg = config[service];
-			if (!cfg) throw new Error(`Unknown service '${service}'. Run /tdd:init or add it to .pi/tdd-services.json.`);
+			if (!cfg) throw new Error(`Unknown service '${service}'. Known: ${Object.keys(config).join(", ")}. Run /tdd:init or add it to .pi/tdd-services.json.`);
 
 			// Check for locked cycle
-			const ptr = readPointer(wt);
-			if (ptr) {
-				const existing = readFlow(wt, ptr.activeService, ptr.activeCycleId);
+			const pointer = readPointer(wt);
+			if (pointer) {
+				const existing = readFlow(wt, pointer.activeService, pointer.activeCycleId);
 				if (existing?.locked) {
-					throw new Error(`Locked cycle exists: ${ptr.activeService}/${ptr.activeCycleId}. Run tdd_done() first.`);
+					throw new Error(`Active cycle '${pointer.activeService}/${pointer.activeCycleId}' is still locked. Call tdd_done() first.`);
 				}
 			}
 
 			const id = cycleId();
-			const planPath = cyclePlanPath(service, id);
+			const pp = cyclePlanPath(service, id);
 
 			const flow: TddFlow = {
-				service, cycleId: id, feature,
-				step: "architect", locked: true,
+				service, feature,
+				skill: cfg.skill,
+				dir: cfg.dir,
+				step: "architect",
+				testPaths: [],
+				planPath: pp,
+				cycleId: id,
+				locked: true,
+				startedAt: new Date().toISOString(),
 			};
-			writeFlow(wt, flow);
-			writePointer(wt, { activeService: service, activeCycleId: id });
+			writeFlow(wt, service, flow);
+
+			const newPointer = pointer
+				? { ...pointer, activeService: service, activeCycleId: id }
+				: { activeService: service, activeCycleId: id, services: [service] };
+			if (!newPointer.services.includes(service)) newPointer.services.push(service);
+			writePointer(wt, newPointer);
 
 			refreshWidget();
 
-			const call = architectCall(cfg, feature, planPath);
+			const call = subagentCall(
+				"architect", cfg.skill,
+				`Recon + plan for ${service}: ${feature}. Write .tdd/${service}/${id}/context.md + ${flow.planPath}.`,
+				cfg.dir,
+			);
 			return {
 				content: [{
 					type: "text",
 					text: [
-						`🧪 TDD cycle started: ${service}/${id} — ${feature}`, ``,
+						`🧪 TDD flow started for '${service}': ${feature}`, ``,
 						`Step 1/6: ARCHITECT (recon + plan)`, ``,
 						call, ``,
 						`After architect completes, call: tdd_next()`,
