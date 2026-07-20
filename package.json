@@ -1,0 +1,20 @@
+{
+	"name": "pi-tdd",
+	"version": "0.1.0",
+	"description": "Guided TDD extension for Pi coding agent — behavioral agents, RED→GREEN gates, cycle-locked flow state. Generic, portable, configurable per project via .pi/tdd-services.json.",
+	"main": "src/index.ts",
+	"types": "src/index.ts",
+	"files": ["src/"],
+	"keywords": ["pi", "pi-extension", "tdd", "test-driven-development", "red-green"],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/bejorock/pi-tdd.git"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"typebox": "^1.3.6"
+	},
+	"pi": {
+		"extension": "src/index.ts"
+	}
+}
