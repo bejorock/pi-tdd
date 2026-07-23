@@ -74,6 +74,10 @@ Gates don't apply to subagents (`PI_SUBAGENT_DEPTH` check) — except the `.env`
 
 `write`/`edit` calls targeting `.env`, `.env.local`, or any `.env.*` (excluding `.env.example`) are rejected before mode logic runs. Bash commands that redirect (`>`, `>>`) or use `cp`/`mv`/`tee`/`echo`/`printf`/`cat` against `.env*` files are blocked the same way. No exceptions, no agent bypass.
 
+### TDD tool gate
+
+`tdd_start`, `tdd_next`, `tdd_red`, `tdd_green`, `tdd_status`, `tdd_done` are only callable in `tdd` mode. Calling any of them from `build` or `plan` mode is rejected with a reason pointing to `/tdd`. This prevents the main agent from starting or manipulating a TDD cycle outside the guided flow.
+
 ## How to add a new test runner
 
 1. Add the runner type in `types.ts` (`TestRunner` union)

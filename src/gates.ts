@@ -87,6 +87,9 @@ Call \`tdd_start({ service, feature })\` to begin. Call \`tdd_next()\` after eac
 - Contract owner runs first — architect writes .tdd/contract/
 - Consumers generate clients from the STATIC contract file, never a running server`;
 
+// TDD orchestration tools — only usable in tdd mode
+const TDD_TOOLS = new Set(["tdd_start", "tdd_next", "tdd_red", "tdd_green", "tdd_status", "tdd_done"]);
+
 export function registerGates(pi: any, currentMode: { value: Mode }): void {
 
 	function isSubagent(): boolean {
@@ -112,6 +115,11 @@ export function registerGates(pi: any, currentMode: { value: Mode }): void {
 			    />{1,2}\s*\.env(\.local|\.\w+)?(?:\s|$)/.test(cmd)) {
 				return { block: true, reason: `[HARD BLOCK] Writing to .env or .env.local via bash is forbidden. These files are READ-ONLY.` };
 			}
+		}
+
+		// TDD tools only make sense inside tdd mode — block them everywhere else
+		if (currentMode.value !== "tdd" && TDD_TOOLS.has(event.toolName)) {
+			return { block: true, reason: `[${currentMode.value} mode] Tool '${event.toolName}' is a TDD tool — switch to /tdd first.` };
 		}
 
 		if (currentMode.value === "build") return;
