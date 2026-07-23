@@ -119,7 +119,7 @@ export function registerGates(pi: any, currentMode: { value: Mode }): void {
 
 		// TDD tools only make sense inside tdd mode — block them everywhere else
 		if (currentMode.value !== "tdd" && TDD_TOOLS.has(event.toolName)) {
-			return { block: true, reason: `[${currentMode.value} mode] Tool '${event.toolName}' is a TDD tool — switch to /tdd first.` };
+			return { block: true, reason: `[${currentMode.value} mode] Tool '${event.toolName}' is a TDD tool — must be in tdd mode.` };
 		}
 
 		if (currentMode.value === "build") return;

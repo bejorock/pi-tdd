@@ -76,7 +76,7 @@ Gates don't apply to subagents (`PI_SUBAGENT_DEPTH` check) — except the `.env`
 
 ### TDD tool gate
 
-`tdd_start`, `tdd_next`, `tdd_red`, `tdd_green`, `tdd_status`, `tdd_done` are only callable in `tdd` mode. Calling any of them from `build` or `plan` mode is rejected with a reason pointing to `/tdd`. This prevents the main agent from starting or manipulating a TDD cycle outside the guided flow.
+`tdd_start`, `tdd_next`, `tdd_red`, `tdd_green`, `tdd_status`, `tdd_done` are only callable in `tdd` mode. Calling any of them from `build` or `plan` mode is rejected with a reason stating the agent must be in tdd mode. This prevents the main agent from starting or manipulating a TDD cycle outside the guided flow.
 
 ## How to add a new test runner
 
