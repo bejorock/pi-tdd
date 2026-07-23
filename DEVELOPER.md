@@ -62,11 +62,17 @@ Three modes managed in `gates.ts`:
 
 | Mode | Write/Edit | Bash | System Prompt | Widget |
 |---|---|---|---|---|
-| `build` | ✅ allowed | ✅ allowed | unchanged | 🟢 Build |
-| `plan` | ❌ blocked | ✅ allowed | unchanged | 🔵 Plan |
-| `tdd` | ❌ blocked (except .tdd/) | blocked for redirects/cp/mv/tee | TDD guidance injected | 🧪 TDD flow |
+| `build` | ✅ allowed | ✅ allowed | BUILD_SYSTEM_PROMPT | 🟢 Build |
+| `plan` | ❌ blocked | ✅ allowed | PLAN_SYSTEM_PROMPT | 🔵 Plan |
+| `tdd` | ❌ blocked (except .tdd/) | blocked for redirects/cp/mv/tee | TDD_SYSTEM_PROMPT + active cycle info | 🧪 TDD flow |
 
-Gates don't apply to subagents (`PI_SUBAGENT_DEPTH` check).
+Every mode injects a system prompt via `before_agent_start` so the agent always knows its constraints and reminders (e.g. don't call tdd_* tools outside /tdd).
+
+Gates don't apply to subagents (`PI_SUBAGENT_DEPTH` check) — except the `.env` hard block, which applies unconditionally in every mode, to the main agent and subagents alike.
+
+### `.env` hard block
+
+`write`/`edit` calls targeting `.env`, `.env.local`, or any `.env.*` (excluding `.env.example`) are rejected before mode logic runs. Bash commands that redirect (`>`, `>>`) or use `cp`/`mv`/`tee`/`echo`/`printf`/`cat` against `.env*` files are blocked the same way. No exceptions, no agent bypass.
 
 ## How to add a new test runner
 

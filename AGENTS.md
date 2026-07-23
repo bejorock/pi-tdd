@@ -9,7 +9,7 @@ Enforces RED→GREEN TDD discipline through three behavioral subagents with hard
 ```
 src/
 ├── index.ts           # Entry: registers gates, 6 tools, /init command, widget
-├── gates.ts           # Mode system: build/plan/tdd, tool blocking, TDD_SYSTEM_PROMPT, /build /plan /tdd /mode
+├── gates.ts           # Mode system: build/plan/tdd, tool blocking, .env hard block, BUILD/PLAN/TDD_SYSTEM_PROMPT, /build /plan /tdd /mode
 ├── config.ts          # loadServiceConfig() from .pi/tdd-services.json, AGENT_RUNTIME, MAX_TDD_ITER
 ├── state.ts           # Cycle state machine: TddPointer (multi-service), TddFlow, cycle helpers
 ├── init.ts            # /init — auto-discover services, detect frameworks, scaffold agents
