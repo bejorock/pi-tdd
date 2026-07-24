@@ -80,6 +80,10 @@ Gates don't apply to subagents (`PI_SUBAGENT_DEPTH` check) — except the `.env`
 
 `tdd_start`, `tdd_next`, `tdd_red`, `tdd_green`, `tdd_status`, `tdd_done` are only callable in `tdd` mode. Calling any of them from `build` or `plan` mode is rejected with a reason stating the agent must be in tdd mode. This prevents the main agent from starting or manipulating a TDD cycle outside the guided flow.
 
+### Subagent delegation block in plan mode
+
+`subagent` and `subagent_wait` (registered by the `pi-subagents` extension) are blocked in `plan` mode. Without this, the main agent could bypass the write/edit block by delegating the write to a subagent, which has its own write access unaffected by the parent's mode gate. Blocked in `plan` only — `build` and `tdd` both need subagent delegation to function (TDD mode's entire flow is subagent calls).
+
 ## How to add a new test runner
 
 1. Add the runner type in `types.ts` (`TestRunner` union)

@@ -38,17 +38,16 @@ export const PLAN_SYSTEM_PROMPT = `
 
 ## PLAN MODE ACTIVE
 
-You are in **plan mode** — read-only exploration and planning. Write/edit tools are blocked.
+You are in **plan mode** — read-only exploration and planning. Write/edit tools are blocked, and so is subagent delegation.
 
 ### What you can do
 - Read any file, search code, run bash for exploration (grep, find, ls, tests)
-- Delegate to read-only agents for research and planning
-- Write planning artifacts ONLY via subagents (they have write access)
-- Produce plans, architecture documents, research reports, and proposals
+- Produce plans, architecture documents, research reports, and proposals as text in your response
 
 ### What is blocked
 - \`write\` and \`edit\` tool calls are rejected in this mode
-- You cannot modify source files, configs, or tests directly
+- \`subagent\` and \`subagent_wait\` are ALSO blocked — a subagent can write files, which would bypass this mode's read-only restriction
+- You cannot modify source files, configs, or tests directly, and cannot delegate that work to an agent either
 - Do NOT attempt to implement — plan first, then switch to /build or /tdd
 
 ### What this mode is for
@@ -102,6 +101,9 @@ Call \`tdd_start({ service, feature })\` to begin. Call \`tdd_next()\` after eac
 // TDD orchestration tools — only usable in tdd mode
 const TDD_TOOLS = new Set(["tdd_start", "tdd_next", "tdd_red", "tdd_green", "tdd_status", "tdd_done"]);
 
+// pi-subagents delegation tools — blocked in plan mode (a subagent can write files, bypassing the read-only restriction)
+const SUBAGENT_TOOLS = new Set(["subagent", "subagent_wait"]);
+
 export function registerGates(pi: any, currentMode: { value: Mode }): void {
 
 	function isSubagent(): boolean {
@@ -139,6 +141,9 @@ export function registerGates(pi: any, currentMode: { value: Mode }): void {
 		if (currentMode.value === "plan") {
 			if (["write", "edit"].includes(event.toolName)) {
 				return { block: true, reason: `[plan mode] Tool '${event.toolName}' is blocked — use read-only tools for planning.` };
+			}
+			if (SUBAGENT_TOOLS.has(event.toolName)) {
+				return { block: true, reason: `[plan mode] Tool '${event.toolName}' is blocked — subagents can write files, which would bypass plan mode's read-only restriction. Switch to /build or /tdd to delegate.` };
 			}
 		}
 
