@@ -4,6 +4,12 @@ import { activeCycleDir, activeServiceFlow } from "./state";
 import { repoRoot } from "./utils";
 import { MODE_WIDGET, setWidgetState } from "./widget";
 
+/** Unambiguous "you are HERE now" banner, prepended to every mode's injected prompt. */
+function modeBanner(mode: Mode): string {
+	const labels: Record<Mode, string> = { build: "🟢 BUILD", plan: "🔵 PLAN", tdd: "🧪 TDD" };
+	return `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📍 CURRENT MODE: ${labels[mode]}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nThis is your ACTIVE mode right now, as of this turn. If any earlier part of this conversation mentions a different mode, that is STALE — the mode may have changed since then via /build, /plan, or /tdd. Always trust this banner over conversation history.`;
+}
+
 export const BUILD_SYSTEM_PROMPT = `
 
 ## BUILD MODE ACTIVE
@@ -24,7 +30,9 @@ You are in **build mode** — all tools are enabled with no restrictions.
 ### Reminders
 - You are NOT in TDD mode — do NOT call tdd_start/tdd_next/tdd_red/tdd_green unless switching to /tdd
 - You are NOT in plan mode — write and edit tools are fully available
-- If the user switches mode with /plan or /tdd, the appropriate restrictions will activate`;
+- If the user switches mode with /plan or /tdd, the appropriate restrictions will activate
+
+**You are currently in BUILD mode.**`;
 
 export const PLAN_SYSTEM_PROMPT = `
 
@@ -52,7 +60,9 @@ You are in **plan mode** — read-only exploration and planning. Write/edit tool
 ### Reminders
 - You are NOT in TDD mode — do NOT call tdd_start/tdd_next/tdd_red/tdd_green
 - You are NOT in build mode — write/edit are blocked
-- Switch to /build for implementation or /tdd for test-driven development`;
+- Switch to /build for implementation or /tdd for test-driven development
+
+**You are currently in PLAN mode.**`;
 
 export const TDD_SYSTEM_PROMPT = `
 
@@ -85,7 +95,9 @@ Call \`tdd_start({ service, feature })\` to begin. Call \`tdd_next()\` after eac
 
 ### Multi-service
 - Contract owner runs first — architect writes .tdd/contract/
-- Consumers generate clients from the STATIC contract file, never a running server`;
+- Consumers generate clients from the STATIC contract file, never a running server
+
+**You are currently in TDD mode.**`;
 
 // TDD orchestration tools — only usable in tdd mode
 const TDD_TOOLS = new Set(["tdd_start", "tdd_next", "tdd_red", "tdd_green", "tdd_status", "tdd_done"]);
@@ -152,7 +164,8 @@ export function registerGates(pi: any, currentMode: { value: Mode }): void {
 		}
 	});
 
-	// System prompt injection — fires for every mode so the agent always knows where it is
+	// System prompt injection — fires for every mode so the agent always knows where it is.
+	// The mode banner is appended LAST so it's the most recent/salient part of the prompt.
 	pi.on("before_agent_start", (event: any) => {
 		if (currentMode.value === "tdd") {
 			const wt = repoRoot();
@@ -168,6 +181,7 @@ export function registerGates(pi: any, currentMode: { value: Mode }): void {
 		} else if (currentMode.value === "build") {
 			event.systemPrompt += BUILD_SYSTEM_PROMPT;
 		}
+		event.systemPrompt += modeBanner(currentMode.value);
 	});
 
 	// Widget refresh
@@ -180,7 +194,15 @@ export function registerGates(pi: any, currentMode: { value: Mode }): void {
 		handler: async (_args: any, ctx: any) => {
 			currentMode.value = "build";
 			ctx.ui.notify("Mode: BUILD — all tools enabled", "info");
-			if (ctx.hasUI) { ctx.ui.setStatus("mode", "BUILD"); setWidgetState(ctx, currentMode.value); }
+			if (ctx.hasUI) {
+				ctx.ui.setStatus("mode", "BUILD");
+				setWidgetState(ctx, currentMode.value);
+				pi.sendMessage({
+					customType: "mode-switch-notice",
+					content: [{ type: "text", text: "[MODE SWITCHED → BUILD] All tools enabled, no TDD restrictions. Previous mode context is now STALE." }],
+					display: true,
+				});
+			}
 		},
 	});
 	pi.registerCommand("plan", {
@@ -188,7 +210,15 @@ export function registerGates(pi: any, currentMode: { value: Mode }): void {
 		handler: async (_args: any, ctx: any) => {
 			currentMode.value = "plan";
 			ctx.ui.notify("Mode: PLAN — write tools blocked, bash allowed", "info");
-			if (ctx.hasUI) { ctx.ui.setStatus("mode", "PLAN"); setWidgetState(ctx, currentMode.value); }
+			if (ctx.hasUI) {
+				ctx.ui.setStatus("mode", "PLAN");
+				setWidgetState(ctx, currentMode.value);
+				pi.sendMessage({
+					customType: "mode-switch-notice",
+					content: [{ type: "text", text: "[MODE SWITCHED → PLAN] write/edit tools blocked, read-only exploration only. Previous mode context is now STALE." }],
+					display: true,
+				});
+			}
 		},
 	});
 	pi.registerCommand("tdd", {
@@ -200,8 +230,8 @@ export function registerGates(pi: any, currentMode: { value: Mode }): void {
 				ctx.ui.setStatus("mode", "TDD");
 				setWidgetState(ctx, currentMode.value);
 				pi.sendMessage({
-					customType: "tdd-mode-notice",
-					content: [{ type: "text", text: "[TDD MODE ACTIVE] Code writes blocked (bash + .tdd/ writes allowed).\n\n**Start a feature:** tdd_start({ service: \"...\", feature: \"...\" })\n**Next step:**     tdd_next()\n**Gates:**         tdd_red / tdd_green\n\n**TDD Agents:** architect → red-writer → green-impl → reviewer\n**Lock:** tdd_status / tdd_done\n\nFlow: tdd_start → architect → red-writer → tdd_red → green-impl → tdd_green → reviewer → tdd_done" }],
+					customType: "mode-switch-notice",
+					content: [{ type: "text", text: "[MODE SWITCHED → TDD] Code writes blocked (bash + .tdd/ writes allowed). Previous mode context is now STALE.\n\n**Start a feature:** tdd_start({ service: \"...\", feature: \"...\" })\n**Next step:**     tdd_next()\n**Gates:**         tdd_red / tdd_green\n\n**TDD Agents:** architect → red-writer → green-impl → reviewer\n**Lock:** tdd_status / tdd_done\n\nFlow: tdd_start → architect → red-writer → tdd_red → green-impl → tdd_green → reviewer → tdd_done" }],
 					display: true,
 				});
 			}

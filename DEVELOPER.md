@@ -68,6 +68,8 @@ Three modes managed in `gates.ts`:
 
 Every mode injects a system prompt via `before_agent_start` so the agent always knows its constraints and reminders (e.g. don't call tdd_* tools outside /tdd).
 
+A `modeBanner()` (📍 CURRENT MODE: ...) is appended LAST, after the mode-specific prompt, on every turn. It explicitly tells the agent that any earlier mode reference in the conversation is stale and to trust the banner over history — this prevents confusion when the user switches modes mid-conversation with /build, /plan, /tdd. Each mode command (`/build`, `/plan`, `/tdd`) also sends a persisted `mode-switch-notice` message into the conversation so the switch is visible in history, not just in the ephemeral system prompt.
+
 Gates don't apply to subagents (`PI_SUBAGENT_DEPTH` check) — except the `.env` hard block, which applies unconditionally in every mode, to the main agent and subagents alike.
 
 ### `.env` hard block
